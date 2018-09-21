@@ -1,0 +1,3 @@
+https://github.com/chardet/chardet
+Release 2.3.0
+Unmodified
