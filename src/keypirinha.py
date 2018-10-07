@@ -30,8 +30,8 @@ def version():
 
     Examples:
     ::
-        version() > (2)     # test if version is strictly greater than "2"
-        version() <= (1, 1) # test if version is less than or equal to "1.1"
+        version() > (2, )   # test if version is strictly greater than v2
+        version() <= (1, 1) # test if version is less than or equal to v1.1
     """
     return keypirinha_api.version_tuple()
 
@@ -65,6 +65,7 @@ def pid():
 def computer_name():
     """
     Return computer's NetBIOS name.
+
     This is the name used when looking for computer-specific configuration
     files.
     """
@@ -73,16 +74,20 @@ def computer_name():
 def user_name():
     """
     Return current user's name.
+
     This is the name used when looking for user-specific configuration files.
     """
     return keypirinha_api.user_name()
 
 def exe_path():
-    """Return the full path to Keypirinha's bootstrap executable."""
+    """
+    Return the full path to Keypirinha's bootstrap executable (i.e. not the
+    architecture-specific executable).
+    """
     return keypirinha_api.exe_path()
 
 def packages_list():
-    """Return the list of the names of the currently loaded packages."""
+    """Return a list of the names of the packages that are currently loaded."""
     return keypirinha_api.packages_list()
 
 def live_package_dir(package_full_name=None):
@@ -90,13 +95,16 @@ def live_package_dir(package_full_name=None):
     Get the directory of a *live* package, or the base directory for
     :ref:`pack-live` in case *package_full_name* is not specified.
 
+    Prefer to use :py:meth:`Plugin.get_package_cache_path` when possible.
+
     The base directory should look similar to
     :file:`%APPDATA%/Keypirinha/Packages` in installed mode and
     :file:`X:/Keypirinha/portable/Profile/Packages` in portable mode.
 
     Note:
         The base directory is guaranteed to exist, but not the directory of the
-        given package.
+        given package. Thus it is the responsibility of the caller to create it
+        if needed.
 
     See Also:
         :py:func:`exe_path`, :py:func:`installed_package_dir`,
@@ -121,6 +129,7 @@ def installed_package_dir(package_full_name=None):
 
     Note:
         The base directory is guaranteed to exist, but not the package itself.
+        Thus it is the responsibility of the caller to create it if needed.
 
     See Also:
         :py:func:`exe_path`, :py:func:`live_package_dir`,
@@ -974,8 +983,11 @@ class Plugin(keypirinha_api.Plugin):
             RuntimeError: Unexpected/Unknown error.
 
         Note:
-            For performance reason, the MemoryError exception will be raised if
-            the specified file size is bigger than 16MB (16777216 bytes).
+            For performance reason, the `MemoryError` exception is raised if the
+            specified file size is bigger than 16MB (16777216 bytes).
+
+        See Also:
+            :py:meth:`load_text_resource`
         """
         return super().load_binary_resource(relative_path)
 
@@ -987,6 +999,9 @@ class Plugin(keypirinha_api.Plugin):
         May raise the same exceptions than :py:meth:`load_binary_resource`, plus
         the :py:exc:`TypeError` exception if resource's content could not be
         decoded (Unicode error).
+
+        See Also:
+            :py:meth:`load_binary_resource`
         """
         return super().load_text_resource(relative_path)
 
@@ -1024,18 +1039,18 @@ class Plugin(keypirinha_api.Plugin):
         parent Package.
 
         Note:
-            * The configuration files will be loaded only the first time this
+            * The configuration file(s) will be loaded only the first time this
               method is called. Any subsequent call will return a new
               :py:class:`keypirinha.Settings` object pointing to the same data
               block.
             * When the application detects that one or several configuration
-              files have been modified in a Package, it will automatically
-              re-read the files (only if they were previously loaded), then will
-              notify every related plugin via a call to
-              :py:func:`Plugin.on_events`.
-            * In case :py:func:`Plugin.on_events` is called, plugins will not
-              have to call :py:meth:`Plugin.load_settings` again if they already
-              hold a :py:class:`keypirinha.Settings` object.
+              files have been modified in a Package, it is automatically re-read
+              the files (only if they were previously loaded), then will notify
+              every related plugin via a call to :py:func:`Plugin.on_events`.
+            * It is not necessary to re-call this method upon a
+              :py:func:`Plugin.on_events` if you already have a
+              :py:class:`keypirinha.Settings` object associated to this plugin.
+              The application update user's configuration data upon file change.
 
         See Also:
             :py:func:`settings`

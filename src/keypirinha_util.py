@@ -22,10 +22,10 @@ def raise_winerror(winerr=None, msg=None):
     """
     Raises :py:exc:`OSError` (formerly :py:exc:`WindowsError`) using the given
     Windows Error number. If the error number is not given,
-    :py:func:`ctypes.GetLastError` is called which returns the last error code
-    set by Windows in the calling thread.
-    Does nothing if *winerr* or eventually the result of
-    :py:func:`ctypes.GetLastError` is ``0`` (zero).
+    :py:func:`ctypes.GetLastError` is called.
+
+    Does nothing if *winerr*, or by default, the result of
+    :py:func:`ctypes.GetLastError`, is ``0`` (zero).
     """
     # ctypes.WinError could have been used but using OSError directly is more
     # obvious to the reader
@@ -49,7 +49,6 @@ def fuzzy_score(search, against, apply_same_case_bonus=False):
         int: The score is an unsigned integer. ``0`` (zero) means no match, a
         value greater than zero means a match. The higher the score, the better
         the match is.
-
     """
     return keypirinha_api.fuzzy_score(search, against, apply_same_case_bonus)
 
@@ -100,8 +99,9 @@ def kwargs_decode(encoded_string):
 
 def get_clipboard():
     """
-    Returns a string containing system's clipboard if it contains text, or an
-    empty string otherwise.
+    Returns a string containing system's clipboard only if it contains text.
+
+    An empty string is returned otherwise.
 
     See Also:
         :py:func:`set_clipboard`
@@ -312,7 +312,7 @@ def scan_directory(base_dir, name_patterns='*', flags=ScanFlags.DEFAULT, max_lev
     Walks a directory and builds a list of relative paths.
 
     Warning:
-        * This function is kept to maintain compatibility only. It is now
+        * This function is only kept to maintain backward compatibility. It is
           recommended to use :py:func:`os.scandir` instead.
         * This function has been developed as a fast alternative to
           :py:func:`os.walk`. However since then, :py:func:`os.scandir` has been
@@ -354,6 +354,10 @@ def scan_directory(base_dir, name_patterns='*', flags=ScanFlags.DEFAULT, max_lev
 
     Note:
         Win32's ``FindFirstFile`` is used internally.
+
+    .. deprecated::
+        This function is deprecated in favor of :py:func:`os.scandir`. It is
+        kept here only to maintain backward compatibility.
     """
     if isinstance(name_patterns, str):
         name_patterns = [name_patterns]
@@ -373,8 +377,9 @@ def browse_directory(
         search_terms="", store_score=False,
         show_dirs_first=True, show_hidden_files=False, show_system_files=False):
     """
-    A helper to browse the first level of a directory and pass its content to
-    :py:meth:`keypirinha.Plugin.set_suggestions`.
+    Scan the first level of a directory according to a search term (optional)
+    and some filtering rules in order to get :py:class:`keypirinha.CatalogItem`
+    objects to feed :py:meth:`keypirinha.Plugin.set_suggestions`.
 
     Args:
         plugin (keypirinha.Plugin): The parent plugin of the
@@ -548,7 +553,7 @@ def shell_execute(
         and behaves incorrectly in some cases.
 
     Note:
-        * A successful call, does not necessarily mean the item has effectively
+        * A successful call does not necessarily mean the item has effectively
           been launched/executed as expected, or that the launched process ended
           successfully.
         * This function tries to resolve shell links for the *thing* and the
