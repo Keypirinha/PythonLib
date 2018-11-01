@@ -1,3 +1,3 @@
 https://github.com/enthought/comtypes
-PyPI's 1.1.3 version
-Slightly modified for Keypirinha ([KP] tags)
+Release 1.1.7
+Slightly modified for Keypirinha (search for the [KP] tags)

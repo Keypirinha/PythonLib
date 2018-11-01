@@ -28,16 +28,12 @@ __all__ = ["CreateObject", "GetActiveObject", "CoGetObject",
            "GetEvents", "ShowEvents", "PumpEvents", "GetModule",
            "GetClassObject"]
 
-from comtypes.client._code_cache import _find_gen_dir
-
-gen_dir = _find_gen_dir()
-import comtypes.gen
-
-### for testing
-##gen_dir = None
-
-# [KP] disabled the "cache" feature for Keypirinha to avoid potential binary
+# [KP] Disabled the cache feature for Keypirinha to avoid potential binary
 # compatibility issues between 32-bit and 64-bit platforms
+#
+# from comtypes.client._code_cache import _find_gen_dir
+# gen_dir = _find_gen_dir()
+import comtypes.gen
 gen_dir = None
 
 def wrap_outparam(punk):
