@@ -1,14 +1,85 @@
 # -*- coding: utf-8 -*-
-"""This module defines the "ns" enum for natsort."""
-from __future__ import (
-    print_function,
-    division,
-    unicode_literals,
-    absolute_import
-)
+"""
+This module defines the "ns" enum for natsort is used to determine
+what algorithm natsort uses.
+"""
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import collections
+
+# NOTE: OrderedDict is not used below for compatibility with Python 2.6.
+
+# The below are the base ns options. The values will be stored as powers
+# of two so bitmasks can be used to extract the user's requested options.
+enum_options = [
+    "FLOAT",
+    "SIGNED",
+    "NOEXP",
+    "PATH",
+    "LOCALEALPHA",
+    "LOCALENUM",
+    "IGNORECASE",
+    "LOWERCASEFIRST",
+    "GROUPLETTERS",
+    "UNGROUPLETTERS",
+    "NANLAST",
+    "COMPATIBILITYNORMALIZE",
+    "NUMAFTER",
+]
+
+# Following were previously options but are now defaults.
+enum_do_nothing = ["DEFAULT", "TYPESAFE", "INT", "VERSION", "DIGIT", "UNSIGNED"]
+
+# The following are bitwise-OR combinations of other fields.
+enum_combos = [("REAL", ("FLOAT", "SIGNED")), ("LOCALE", ("LOCALEALPHA", "LOCALENUM"))]
+
+# The following are aliases for other fields.
+enum_aliases = [
+    ("T", "TYPESAFE"),
+    ("I", "INT"),
+    ("V", "VERSION"),
+    ("D", "DIGIT"),
+    ("U", "UNSIGNED"),
+    ("F", "FLOAT"),
+    ("S", "SIGNED"),
+    ("R", "REAL"),
+    ("N", "NOEXP"),
+    ("P", "PATH"),
+    ("LA", "LOCALEALPHA"),
+    ("LN", "LOCALENUM"),
+    ("L", "LOCALE"),
+    ("IC", "IGNORECASE"),
+    ("LF", "LOWERCASEFIRST"),
+    ("G", "GROUPLETTERS"),
+    ("UG", "UNGROUPLETTERS"),
+    ("C", "UNGROUPLETTERS"),
+    ("CAPITALFIRST", "UNGROUPLETTERS"),
+    ("NL", "NANLAST"),
+    ("CN", "COMPATIBILITYNORMALIZE"),
+    ("NA", "NUMAFTER"),
+]
+
+# Construct the list of bitwise distinct enums with their fields.
+enum_fields = [(name, 1 << i) for i, name in enumerate(enum_options)]
+enum_fields.extend((name, 0) for name in enum_do_nothing)
+
+for name, combo in enum_combos:
+    current_mapping = dict(enum_fields)
+    combined_value = current_mapping[combo[0]]
+    for combo_name in combo[1:]:
+        combined_value |= current_mapping[combo_name]
+    enum_fields.append((name, combined_value))
+
+current_mapping = dict(enum_fields)
+enum_fields.extend((alias, current_mapping[name]) for alias, name in enum_aliases)
+
+# Finally, extract out the enum field names and their values.
+enum_field_names, enum_field_values = zip(*enum_fields)
 
 
-class ns(object):
+# Subclass the namedtuple to improve the docstring.
+# noinspection PyUnresolvedReferences
+class _NSEnum(collections.namedtuple("_NSEnum", enum_field_names)):
     """
     Enum to control the `natsort` algorithm.
 
@@ -39,9 +110,12 @@ class ns(object):
         This is a shortcut for ``ns.FLOAT | ns.SIGNED``, which is useful
         when attempting to sort real numbers.
     NOEXP, N
-        Tell `natsort` to not search for exponents as part of the number.
+        Tell `natsort` to not search for exponents as part of a float number.
         For example, with `NOEXP` the number "5.6E5" would be interpreted
         as `5.6`, `"E"`, and `5` instead of `560000`.
+    NUMAFTER, NA
+        Tell `natsort` to sort numbers after non-numbers. By default
+        numbers will be ordered before non-numbers.
     PATH, P
         Tell `natsort` to interpret strings as filesystem paths, so they
         will be split according to the filesystem separator
@@ -51,6 +125,13 @@ class ns(object):
         sorted properly; 'Folder/' will be placed at the end, not at the
         front. It is the same as setting the old `as_path` option to
         `True`.
+    COMPATIBILITYNORMALIZE, CN
+        Use the "NFKD" unicode normalization form on input rather than the
+        default "NFD". This will transform characters such as '⑦' into
+        '7'. Please see https://stackoverflow.com/a/7934397/1399279,
+        https://stackoverflow.com/a/7931547/1399279,
+        and http://unicode.org/reports/tr15/ for full details into unicode
+        normalization.
     LOCALE, L
         Tell `natsort` to be locale-aware when sorting. This includes both
         proper sorting of alphabetical characters as well as proper
@@ -120,30 +201,11 @@ class ns(object):
         True
 
     """
-    # Following were previously now options but are now defaults.
-    TYPESAFE         = T  = 0
-    INT              = I  = 0
-    VERSION          = V  = 0
-    DIGIT            = D  = 0
-    UNSIGNED         = U  = 0
 
-    # The below are options. The values are stored as powers of two
-    # so bitmasks can be used to extract the user's requested options.
-    FLOAT            = F  = 1 << 0
-    SIGNED           = S  = 1 << 1
-    REAL             = R  = FLOAT | SIGNED
-    NOEXP            = N  = 1 << 2
-    PATH             = P  = 1 << 3
-    LOCALEALPHA      = LA = 1 << 4
-    LOCALENUM        = LN = 1 << 5
-    LOCALE           = L  = LOCALEALPHA | LOCALENUM
-    IGNORECASE       = IC = 1 << 6
-    LOWERCASEFIRST   = LF = 1 << 7
-    GROUPLETTERS     = G  = 1 << 8
-    UNGROUPLETTERS   = UG = 1 << 9
-    CAPITALFIRST     = C  = UNGROUPLETTERS
-    NANLAST          = NL = 1 << 10
 
-    # The below are private options for internal use only.
-    _NUMERIC_ONLY    = REAL | NOEXP
-    _DUMB            = 1 << 31
+# Here is where the instance of the ns enum that will be exported is created.
+# It is a poor-man's singleton.
+ns = _NSEnum(*enum_field_values)
+
+# The below is private for internal use only.
+ns_DUMB = 1 << 31
