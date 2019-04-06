@@ -97,7 +97,7 @@ class _GlobExEntry_OsDirEntry(GlobExEntry):
 
 
 class _GlobExEntry_Path(GlobExEntry):
-    __slots__ = ('path', 'name', 'depth', '_is_dir', '_stat', '_lstat')
+    __slots__ = ('path', 'depth', '_name', '_is_dir', '_stat', '_lstat')
 
     def __init__(self, path, basename=None, depth=0, is_dir=None):
         assert isinstance(path, (str, bytes))
@@ -113,6 +113,7 @@ class _GlobExEntry_Path(GlobExEntry):
             #
             # assert not (path[-1] in SEP or path[-1] in ALTSEP)
             self.path = path if path else os.curdir
+            self._name = None
         else:
             # *basename* is provided and *path* is its dirname
             if __debug__:
@@ -123,19 +124,19 @@ class _GlobExEntry_Path(GlobExEntry):
                     assert SEP[0] not in basename
                     assert ALTSEP[0] not in basename
             self.path = os.path.join(path, basename) if path else basename
-            self.name = basename
+            self._name = basename
 
         self.depth = depth
         self._is_dir = is_dir
         self._stat = None
         self._lstat = None
 
-    def __getattr__(self, attr):
-        if attr == 'name':
-            self.name = os.path.basename(self.path)
-            return self.name
-        else:
-            return super().__getattr__(attr)
+    @property
+    def name(self):
+        if self._name is None:
+            self._name = os.path.basename(self.path)
+
+        return self._name
 
     def inode(self):
         return self.stat(follow_symlinks=False).st_ino
@@ -489,6 +490,7 @@ if __name__ == '__main__':
         for entry in iglobex(pattern, recursivity=args.recursivity,
                              include_hidden=args.hidden):
             assert isinstance(entry, GlobExEntry)
+            assert entry.name == os.path.basename(entry.path)
             assert entry.is_dir() == os.path.isdir(entry.path)
 
             sys.stdout.write('  [+] [{}] {}\n'.format(entry.depth, repr(entry)))
