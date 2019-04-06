@@ -30,6 +30,7 @@ if __debug__:
     else:
         ALTSEP = ()
 
+
 class GlobExEntry:
     """
     An :py:class:`os.DirEntry` compatible class.
@@ -40,6 +41,8 @@ class GlobExEntry:
       level of recursivity this entry has been found
     * The :py:meth:`is_hidden`, :py:meth:`exists` and :py:meth:`lexists` methods
     """
+    __slots__ = ()
+
     def is_hidden(self):
         """Call :py:func:`globex.is_hidden` with this entry"""
         return is_hidden(self)
@@ -65,7 +68,7 @@ class GlobExEntry:
     def __repr__(self):
         return '{}.{}({})'.format(
             self.__class__.__module__,
-            self.__class__.__qualname__, #py3k
+            self.__class__.__qualname__,  # py3k
             repr(self.path))
 
     # os.DirEntry implements __fspath__() so we preserve interface compatibility
@@ -73,10 +76,16 @@ class GlobExEntry:
         def __fspath__(self):
             return self.path
 
+
 class _GlobExEntry_OsDirEntry(GlobExEntry):
+    __slots__ = ('direntry', 'depth')
+
     def __init__(self, direntry, depth=0):
         assert isinstance(direntry, os.DirEntry)
         assert depth >= 0
+
+        super().__init__()
+
         self.direntry = direntry
         self.depth = depth
 
@@ -86,17 +95,23 @@ class _GlobExEntry_OsDirEntry(GlobExEntry):
         except AttributeError:
             return super().__getattr__(attr)
 
+
 class _GlobExEntry_Path(GlobExEntry):
-    def __init__(self, path, basename=None, depth=0):
+    __slots__ = ('path', 'name', 'depth', '_is_dir', '_stat', '_lstat')
+
+    def __init__(self, path, basename=None, depth=0, is_dir=None):
         assert isinstance(path, (str, bytes))
         assert basename is None or isinstance(basename, (str, bytes))
         assert basename is None or os.path.split(basename)[1] == basename
         assert depth >= 0
 
+        super().__init__()
+
         if basename is None:
             # *path* is complete and self.name will be lazy-init by
             # __getattr__() if needed
-            #assert not (path[-1] in SEP or path[-1] in ALTSEP)
+            #
+            # assert not (path[-1] in SEP or path[-1] in ALTSEP)
             self.path = path if path else os.curdir
         else:
             # *basename* is provided and *path* is its dirname
@@ -111,6 +126,7 @@ class _GlobExEntry_Path(GlobExEntry):
             self.name = basename
 
         self.depth = depth
+        self._is_dir = is_dir
         self._stat = None
         self._lstat = None
 
@@ -125,7 +141,11 @@ class _GlobExEntry_Path(GlobExEntry):
         return self.stat(follow_symlinks=False).st_ino
 
     def is_dir(self, *, follow_symlinks=True):
-        return stat.S_ISDIR(self.stat(follow_symlinks=follow_symlinks).st_mode)
+        if self._is_dir is None:
+            self._is_dir = stat.S_ISDIR(
+                self.stat(follow_symlinks=follow_symlinks).st_mode)
+
+        return self._is_dir
 
     def is_file(self, *, follow_symlinks=True):
         return stat.S_ISREG(self.stat(follow_symlinks=follow_symlinks).st_mode)
@@ -143,6 +163,7 @@ class _GlobExEntry_Path(GlobExEntry):
                 self._lstat = os.lstat(self.path)
             return self._lstat
 
+
 def globex(pathname, *, recursivity=False, include_hidden=False):
     """
     Same as :py:func:`iglobex` but returns a list of :py:class:`GlobExEntry`
@@ -151,6 +172,7 @@ def globex(pathname, *, recursivity=False, include_hidden=False):
     return list(iglobex(pathname,
                         recursivity=recursivity,
                         include_hidden=include_hidden))
+
 
 def iglobex(pathname, *, recursivity=False, include_hidden=False):
     """
@@ -163,7 +185,7 @@ def iglobex(pathname, *, recursivity=False, include_hidden=False):
 
     * *pathname* can be a path-like object (Python 3.6+)
     * Yields :py:class:`GlobExEntry` objects instead of pathnames
-    * When enabled, the maximum level of recursivity can be specified (depth)
+    * When enabled, the maximum level of *recursivity* can be specified (depth)
     * Hidden files can be included if desired
     * True handling of hidden files on Windows in addition to the original
       behavior, by checking file's attributes. This check comes for free in most
@@ -187,10 +209,11 @@ def iglobex(pathname, *, recursivity=False, include_hidden=False):
 
     it = _iglobex(pathname, recursivity, include_hidden, False)
     if recursivity and _is_recursive(pathname):
-        entry = next(it) # skip dummy entry
+        entry = next(it)  # skip dummy entry
         assert len(entry.path) == 1 and entry.path[0] in DOT
 
     return it
+
 
 def _iglobex(pathname, recursivity, include_hidden, dironly):
     dirname, basename = os.path.split(pathname)
@@ -205,7 +228,7 @@ def _iglobex(pathname, recursivity, include_hidden, dironly):
             # Patterns ending with a slash should match only
             # directories (glob._iglob)
             if os.path.isdir(dirname):
-                yield _GlobExEntry_Path(pathname)
+                yield _GlobExEntry_Path(pathname, is_dir=True)
         return
 
     if not dirname:
@@ -223,7 +246,7 @@ def _iglobex(pathname, recursivity, include_hidden, dironly):
     if dirname != pathname and has_magic(dirname):
         dirs = _iglobex(dirname, recursivity, include_hidden, True)
     else:
-        dirs = (_GlobExEntry_Path(dirname), )
+        dirs = (_GlobExEntry_Path(dirname, is_dir=True), )
 
     if has_magic(basename):
         if recursivity and _is_recursive(basename):
@@ -237,6 +260,7 @@ def _iglobex(pathname, recursivity, include_hidden, dironly):
         yield from glob_in_dir(entry.path, basename, dironly,
                                recursivity, include_hidden)
 
+
 def has_magic(s):
     """
     Return ``True`` if the given string (`str` or `bytes`) contains any of the
@@ -248,6 +272,7 @@ def has_magic(s):
         match = MAGIC_REGEX.search(s)
     return match is not None
 
+
 def has_recursive_magic(s):
     """
     Return ``True`` if the given string (`str` or `bytes`) contains the ``**``
@@ -258,11 +283,13 @@ def has_recursive_magic(s):
     else:
         return '**' in s
 
+
 def _is_recursive(pattern):
     if isinstance(pattern, bytes):
         return pattern == b'**'
     else:
         return pattern == '**'
+
 
 def escape(pathname):
     """
@@ -280,6 +307,7 @@ def escape(pathname):
     else:
         pathname = MAGIC_REGEX.sub(r'[\1]', pathname)
     return drive + pathname
+
 
 def is_hidden(pathname_or_entry):
     """
@@ -333,8 +361,8 @@ def is_hidden(pathname_or_entry):
             if isinstance(pathname_or_entry, bytes):
                 pathname_or_entry = os.fsdecode(pathname_or_entry)
             attr = ctypes.windll.kernel32.GetFileAttributesW(pathname_or_entry)
-            err = ctypes.GetLastError() # call it as soon as possible
-            if attr == 0xffffffff: # INVALID_FILE_ATTRIBUTES
+            err = ctypes.GetLastError()  # call it as soon as possible
+            if attr == 0xffffffff:  # INVALID_FILE_ATTRIBUTES
                 raise OSError(None, ctypes.FormatError(err),
                               pathname_or_entry, err)
             if attr & stat.FILE_ATTRIBUTE_HIDDEN:
@@ -343,6 +371,7 @@ def is_hidden(pathname_or_entry):
         return False
 
     raise TypeError
+
 
 def _glob0(dirname, basename, dironly, recursivity, include_hidden):
     if not basename:
@@ -359,6 +388,7 @@ def _glob0(dirname, basename, dironly, recursivity, include_hidden):
         if entry.lexists():
             yield entry
 
+
 def _glob1(dirname, pattern, dironly, recursivity, include_hidden):
     # To optimize things a bit, instead of calling fnmatch.fnmatch() from each
     # iteration of the loop, we reproduce the behavior of fnmatch.filter()
@@ -369,27 +399,30 @@ def _glob1(dirname, pattern, dironly, recursivity, include_hidden):
     patmatch = fnmatch._compile_pattern(pattern)
 
     for entry in _iterdir(dirname, dironly, include_hidden, 0):
-        if os.path is posixpath: # os.path.normcase() on posix is NOP
+        if os.path is posixpath:  # os.path.normcase() on posix is NOP
             if patmatch(entry.name):
                 yield entry
         else:
             if patmatch(os.path.normcase(entry.name)):
                 yield entry
 
+
 def _glob2(dirname, pattern, dironly, recursivity, include_hidden):
     assert _is_recursive(pattern)
     yield _GlobExEntry_Path(dirname)
     yield from _riterdir(dirname, dironly, recursivity, include_hidden, 0)
+
 
 def _glob3(dirname, pattern, dironly, recursivity, include_hidden):
     assert has_recursive_magic(pattern) and not _is_recursive(pattern)
     yield _GlobExEntry_Path(dirname)
     yield from _riterdir(dirname, dironly, recursivity, include_hidden, 0)
 
+
 def _iterdir(dirname, dironly, include_hidden, depth):
     if not dirname:
         if isinstance(dirname, bytes):
-            dirname = bytes(os.curdir, 'ASCII')
+            dirname = os.fsencode(os.curdir)  # bytes(os.curdir, 'ASCII')
         else:
             dirname = os.curdir
 
@@ -408,6 +441,7 @@ def _iterdir(dirname, dironly, include_hidden, depth):
     except OSError:
         return
 
+
 def _riterdir(dirname, dironly, recursivity, include_hidden, depth):
     assert recursivity
     for entry in _iterdir(dirname, dironly, include_hidden, depth):
@@ -423,11 +457,14 @@ if __name__ == '__main__':
     import sys
 
     argp = argparse.ArgumentParser()
-    argp.add_argument('-r', '--recursivity', type=int, default=0,
+    argp.add_argument(
+        '-r', '--recursivity', type=int, default=0,
         help='Recursivity level in [-1, ...]')
-    argp.add_argument('--hidden', action='store_true',
+    argp.add_argument(
+        '--hidden', action='store_true',
         help='List hidden filesystem entries')
-    argp.add_argument('patterns', nargs=argparse.REMAINDER,
+    argp.add_argument(
+        'patterns', nargs=argparse.REMAINDER,
         help='The paths/patterns to glob')
 
     if len(sys.argv) < 2:
@@ -452,4 +489,6 @@ if __name__ == '__main__':
         for entry in iglobex(pattern, recursivity=args.recursivity,
                              include_hidden=args.hidden):
             assert isinstance(entry, GlobExEntry)
+            assert entry.is_dir() == os.path.isdir(entry.path)
+
             sys.stdout.write('  [+] [{}] {}\n'.format(entry.depth, repr(entry)))
