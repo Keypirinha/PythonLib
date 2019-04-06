@@ -331,7 +331,7 @@ def is_hidden(pathname_or_entry):
 
         if IS_WINDOWS:
             if isinstance(pathname_or_entry, bytes):
-                path = os.fsdecode(pathname_or_entry)
+                pathname_or_entry = os.fsdecode(pathname_or_entry)
             attr = ctypes.windll.kernel32.GetFileAttributesW(pathname_or_entry)
             err = ctypes.GetLastError() # call it as soon as possible
             if attr == 0xffffffff: # INVALID_FILE_ATTRIBUTES
