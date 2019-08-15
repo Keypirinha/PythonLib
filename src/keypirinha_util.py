@@ -9,6 +9,7 @@ import keypirinha_wintypes as kpwt
 import sys
 import enum
 import ctypes
+import io
 import os
 import stat
 import sys
@@ -247,21 +248,61 @@ def chardet_open(file, mode="r", buffering=-1, encoding=None, **kwargs):
           in the ``mode`` argument.
         * The ``chardet`` module is used for the auto-detection.
     """
-    if "b" not in mode:
-        with open(file, mode="rb") as f:
-            res = chardet.detect(f.read())
-        encoding = res['encoding']
-    return open(file, mode, buffering, encoding, **kwargs)
+    if ("file" in kwargs or "mode" in kwargs or "buffering" in kwargs or
+            "encoding" in kwargs):
+        raise ValueError("kwargs")
+
+    if "b" in mode:
+        return open(file, mode, buffering, encoding, **kwargs)
+    elif (mode in ("r", "rt", "tr") and
+            os.path.getsize(file) <= 50 * 1024 * 1024):
+        # If the file is small enough (arbitrary size), blindly try to decode it
+        # as utf-8 since many users reported chardet does not detect it well.
+        # See: https://github.com/Keypirinha/Keypirinha/issues/336
+        content = ""
+        try:
+            with open(file, mode="rt",
+                      encoding="utf-8", errors="strict") as fin:
+                content = fin.read()
+        except ValueError:  # UnicodeError
+            pass
+        else:
+            return io.StringIO(content)
+    else:
+        # try to detect file's encoding
+        detector = chardet.UniversalDetector()
+        with open(file, mode="rb") as fin:
+            while True:
+                line = fin.readline(8 * 1024)
+                if len(line) == 0:
+                    break  # eof
+                detector.feed(line)
+                if detector.done:
+                    break
+        detector.close()
+
+        return open(file, mode, buffering, detector.result['encoding'],
+                    **kwargs)
 
 def chardet_slurp(file):
     """
     Fully extract a text file into memory after having automatically detected
     its encoding.
     """
-    with open(file, mode="rb") as f:
-        raw = f.read()
+    with open(file, mode="rb") as fin:
+        raw = fin.read()
+
+    # blindly try to decode as utf-8 since many users reported chardet does not
+    # detect it well
+    # see: https://github.com/Keypirinha/Keypirinha/issues/336
+    try:
+        return raw.decode(encoding="utf-8", errors="strict")
+    except UnicodeError:
+        pass
+
+    # use chardet to detect encoding
     res = chardet.detect(raw)
-    return str(raw, encoding=res['encoding'])
+    return raw.decode(encoding=res['encoding'], errors="strict")
 
 def read_link(link_file):
     """
