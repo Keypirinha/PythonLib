@@ -402,9 +402,11 @@ if IS_WINDOWS:
             try:
                 file_attr = path_or_entry.stat(
                     follow_symlinks=False).st_file_attributes
+                path_or_entry = path_or_entry.path
             except OSError:
                 return None
-            except: # AttributeError, TypeError, ... We are really blind here
+            except Exception:
+                # AttributeError, TypeError, ... We are really blind here
                 if PY36:
                     path_or_entry = os.fspath(path_or_entry)
                 if isinstance(path_or_entry, bytes):
@@ -413,6 +415,8 @@ if IS_WINDOWS:
                     path_or_entry)
                 if file_attr == 0xffffffff: # INVALID_FILE_ATTRIBUTES
                     return None
+
+            assert isinstance(path_or_entry, (str, bytes))
 
             # A file is considered *hidden* if it has the *hidden* attribute or
             # if its name starts with a '.' character.
@@ -487,7 +491,7 @@ def create_filter(expression):
                                  match_all=is_attr_and,
                                  inclusive=inclusive)
         else:
-            raise NotImplementedError # TODO
+            raise NotImplementedError  # TODO
     elif is_regex:
         return PathRegexFilter(pattern,
                                case_sensitive=is_case_sensitive,
