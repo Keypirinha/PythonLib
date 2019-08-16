@@ -1,0 +1,3 @@
+https://github.com/jpadilla/pyjwt
+Release 1.7.1
+Unmodified
