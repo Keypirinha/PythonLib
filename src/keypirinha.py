@@ -306,8 +306,8 @@ def load_icon(sources, force_reload=False, package_full_name=None):
             resource to load from the module (**no prefix**).
             Examples:
               * ``@shell32.dll,-12692``
-              * ``@%SystemRoot%\system32\shell32.dll,-12690``
-              * ``@C:\Dir\App.exe,0``
+              * ``@%SystemRoot%\\system32\\shell32.dll,-12690``
+              * ``@C:\\Dir\\App.exe,0``
 
     See Also:
         :py:meth:`IconHandle.free` and :py:meth:`Plugin.load_icon`
