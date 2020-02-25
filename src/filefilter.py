@@ -247,7 +247,7 @@ class PathShellFilter(_PathFilter_Base):
     def __hash__(self):
         # CAUTION: for this to be consistent, object must be immutable
         if self.hash_cache is None:
-            self.hash_cache = hash((self.__class__.name,
+            self.hash_cache = hash((self.__class__.__name__,
                                     self.inclusive,
                                     self.case_sensitive,
                                     self.pattern,
