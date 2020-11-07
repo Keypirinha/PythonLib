@@ -948,7 +948,13 @@ def web_browser_command(private_mode=None, new_window=None, url=None, execute=Fa
             arg0lc.endswith("googlechromeportable.exe") or
             arg0lc.endswith("vivaldi.exe") or
             arg0lc.endswith("iridium.exe")):
-        final_args = args[:]
+        final_args = args[:]  # copy
+
+        # cleanup command line
+        for unwanted_opt in ("--single-argument", "-single-argument", ):
+            while unwanted_opt in final_args:
+                final_args.remove(unwanted_opt)
+
         if private_mode:
             final_args = _insertopt(final_args, "--incognito")
         if new_window:
@@ -974,13 +980,13 @@ def web_browser_command(private_mode=None, new_window=None, url=None, execute=Fa
             arg0lc.endswith("waterfox.exe") or
             arg0lc.endswith("waterfoxportable.exe") or
             arg0lc.endswith("waterfox-portable.exe")):
-        final_args = args[:] # copy
+        final_args = args[:]  # copy
 
         # cleanup command line
-        for unwanted_opt in ("-osint"):
+        for unwanted_opt in ("-osint", ):
             while unwanted_opt in final_args:
                 final_args.remove(unwanted_opt)
-        for unwanted_opt in ("-osint", "-url", "-private-window", "-new-tab", "-new-window"):
+        for unwanted_opt in ("-url", "-private-window", "-new-tab", "-new-window"):
             while unwanted_opt in final_args:
                 idx = final_args.index(unwanted_opt)
                 if len(final_args) >= idx + 2 and final_args[idx+1].startswith("-"):
@@ -1012,7 +1018,7 @@ def web_browser_command(private_mode=None, new_window=None, url=None, execute=Fa
         if not url:
             url = ["%1"]
         for single_url in url:
-            final_args = args[:] # copy
+            final_args = args[:]  # copy
             if private_mode:
                 final_args = _insertopt(final_args, "-private")
             if new_window:
@@ -1026,7 +1032,7 @@ def web_browser_command(private_mode=None, new_window=None, url=None, execute=Fa
             arg0lc.endswith("opera\\launcher.exe") or
             arg0lc.endswith("operaportable.exe") or
             arg0lc.endswith("opera-portable.exe")):
-        final_args = args[:] # copy
+        final_args = args[:]  # copy
 
         if private_mode:
             final_args = _insertopt(final_args, "-private")
@@ -1045,7 +1051,7 @@ def web_browser_command(private_mode=None, new_window=None, url=None, execute=Fa
         if not url:
             url = ["%1"]
         for single_url in url:
-            final_args = args[:] # copy
+            final_args = args[:]  # copy
             final_args = _inserturls(final_args, single_url)
             cmdlines.append(final_args)
 
